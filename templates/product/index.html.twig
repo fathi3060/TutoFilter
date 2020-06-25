@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Tous nos produits{% endblock %}
+
+{% block body %}
+    <div class="container js-filter">
+        <div class="row">
+            <div class="col-md-3">
+                {% include 'product/_filter.html.twig' with {form: form, min: min, max: max} only %}
+            </div>
+            <div class="col-md-9">
+            <div class="d-flex justify-content-end mb-2 js-filter-sorting">
+                {% include 'product/_sorting.html.twig' %}
+            </div>
+                <div class="grid js-filter-content">
+                    {% include 'product/_products.html.twig' %}
+                </div>
+                <div class="mt-4 js-filter-pagination">
+                    {% include 'product/_pagination.html.twig' %}
+                </div>
+            </div>
+        </div>
+        
+    </div>
+{% endblock %}
