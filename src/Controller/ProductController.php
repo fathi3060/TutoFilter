@@ -29,7 +29,10 @@ class ProductController extends AbstractController
                 'content' => $this->renderView('product/_products.html.twig', ['products' => $products]),
                 //changement des icones des boutons quand on clique sur les boutons 
                 'sorting' => $this->renderView('product/_sorting.html.twig', ['products' => $products]),
-                'pagination' => $this->renderView('product/_pagination.html.twig', ['products' => $products])
+                'pagination' => $this->renderView('product/_pagination.html.twig', ['products' => $products]),
+                'pages' => ceil($products->getTotalItemCount() / $products->getItemNumberPerPage()),
+                'min' => $min,
+                'max' => $max
             ]);
         }
         return $this->render('product/index.html.twig', [

@@ -4,6 +4,8 @@ import { Flipper, spring } from 'flip-toolkit';
  * @property {HTMLElement} content
  * @property {HTMLElement} sorting
  * @property {HTMLFormElement} form
+ * @property {number} page
+ * @property {boolean} moreNav
  */
 export default class Filter {
 
@@ -19,6 +21,8 @@ export default class Filter {
         this.content = element.querySelector('.js-filter-content')
         this.sorting = element.querySelector('.js-filter-sorting')
         this.form = element.querySelector('.js-filter-form')
+        this.page = parseInt(new URLSearchParams(window.location.search).get('page') || 1)
+        this.moreNav = this.page === 1
         this.bindEvents()
     }
 
@@ -34,8 +38,18 @@ export default class Filter {
             }
         };
 
-        this.sorting.addEventListener("click", aClickListener);
-        this.pagination.addEventListener("click", aClickListener);
+        this.sorting.addEventListener("click", e => {
+            aClickListener(e)
+            this.page = 1
+        });
+        //dans le cas ou on est dans la page 1 on mets afficher plus
+        if (this.moreNav) {
+            this.pagination.innerHTML = '<button class="btn btn-primary">Voir plus</button>'
+            this.pagination.querySelector('button').addEventListener('click', this.loadMore.bind(this))
+        } else {
+            this.pagination.addEventListener("click", aClickListener);
+        }
+
         //selection que des checkbox
         //this.form.querySelectorAll('input[type=checkbox]').forEach(input => {
         //maintenant en fonction de l'input ; pour prendre en compte les checkbox et le slider
@@ -44,7 +58,19 @@ export default class Filter {
         })
     }
 
+    async loadMore () {
+        const button = this.pagination.querySelector('button')
+        button.setAttribute('disabled', 'disabled')
+        this.page++
+        const url = new URL(window.location.href)
+        const params = new URLSearchParams(url.search)
+        params.set('page', this.page)
+        await this.loadUrl(url.pathname + '?' + params.toString(), true)
+        button.removeAttribute('disabled')
+    }
+
     async loadForm() {
+        this.page == 1
         const data = new FormData(this.form) //on recupère les données du formulaire
         const url = new URL(this.form.getAttribute('action') || window.location.href)
         const params = new URLSearchParams()
@@ -54,7 +80,7 @@ export default class Filter {
         return this.loadUrl(url.pathname + '?' + params.toString())
     }
 
-    async loadUrl(url) {
+    async loadUrl(url, append = false) {
         this.showLoader()
         const params = new URLSearchParams(url.split('?')[1] || '')
         params.set('ajax', 1)
@@ -65,9 +91,17 @@ export default class Filter {
             const data = await response.json()
             //this.content.innerHTML = data.content //affichage des produits
             //on affiche les produits en faisant appel a flip toolkit
-            this.flipContent(data.content)
+            this.flipContent(data.content, append)
             this.sorting.innerHTML = data.sorting //affichage des boutons
-            this.pagination.innerHTML = data.pagination;
+            if(!this.moreNav) {
+                this.pagination.innerHTML = data.pagination
+            } else if (this.page === data.pages) {
+                this.pagination.style.display = 'none';
+            } else {
+                this.pagination.style.display = null;
+            }
+            this.updatePrices(data)
+
             params.delete('ajax')
             history.replaceState({}, '', url.split('?')[0] + '?' + params.toString()) // pour l'historique de l'url
         } else {
@@ -80,7 +114,7 @@ export default class Filter {
      * Remplace les éléments de la grille par un effet d'animation flip
      * @param {string} content 
      */
-    flipContent(content) {
+    flipContent(content, append) {
         const springConfig = 'gentle'
         //on va gerer l'effet ressort lors du chargement
         const exitSpring = function (element, index, onComplete) {
@@ -125,7 +159,12 @@ export default class Filter {
             });
         })
         flipper.recordBeforeUpdate(); // on memorisation la position de tous mes éléments que j'ai renseigné
-        this.content.innerHTML = content
+        if (append) {
+            this.content.innerHTML += content
+        } else {
+            this.content.innerHTML = content
+        }
+
         // //je reboucle pour recréer des flippers pou qu'il trouve la positions de mes nouveaux éléments
         this.content.children.forEach(element => {
             flipper.addFlipped({
@@ -158,5 +197,18 @@ export default class Filter {
         loader.setAttribute('aria-hidden', 'true')
         loader.style.display = 'none'
 
+    }
+
+    updatePrices({min, max}) {
+        const slider = document.getElementById('price-slider')
+        if (slider === null) {
+            return
+        }
+        slider.noUiSlider.updateOptions({
+            range: {
+                min: [min],
+                max: [max]
+            }
+        })
     }
 }
